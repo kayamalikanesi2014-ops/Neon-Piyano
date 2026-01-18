@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Piano Master | BEKA STUDIO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Poppins:wght@300;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-blue: #00d2ff;
+            --neon-purple: #9d50bb;
+            --neon-pink: #ff007f;
+            --bg-dark: #05050b;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body {
+            margin: 0; padding: 0; background: var(--bg-dark);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; font-family: 'Orbitron', sans-serif;
+            overflow: hidden; user-select: none; touch-action: none; color: white;
+        }
+
+        #game-container {
+            width: 360px; height: 640px;
+            background: #0d0d1a; position: relative;
+            overflow: hidden; border-radius: 25px;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.8);
+            border: 2px solid #1a1a35;
+        }
+
+        /* Screens */
+        .screen {
+            position: absolute; inset: 0; z-index: 100;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            background: rgba(8, 8, 18, 0.98);
+            padding: 20px; text-align: center;
+        }
+        .hidden { display: none !important; }
+
+        /* Song List */
+        .song-list { width: 100%; max-height: 400px; overflow-y: auto; margin: 20px 0; padding-right: 5px; }
+        .song-item {
+            background: rgba(255, 255, 255, 0.03); padding: 15px; margin-bottom: 10px;
+            border-radius: 12px; cursor: pointer; border: 1px solid rgba(157, 80, 187, 0.2);
+            display: flex; justify-content: space-between; align-items: center;
+            transition: 0.2s;
+        }
+        .song-item:active { transform: scale(0.97); background: rgba(157, 80, 187, 0.1); }
+        .song-item.phonk { border-color: var(--neon-pink); }
+        .song-item h3 { margin: 0; font-size: 13px; color: var(--neon-blue); }
+        .song-item.phonk h3 { color: var(--neon-pink); }
+
+        /* UI */
+        #ui-layer {
+            position: absolute; top: 0; width: 100%; height: 80px;
+            padding: 20px; z-index: 10; display: flex;
+            justify-content: space-between; align-items: center; pointer-events: none;
+        }
+        #score { font-size: 42px; text-shadow: 0 0 15px var(--neon-blue); }
+        #pause-btn {
+            width: 45px; height: 45px; background: rgba(255,255,255,0.05);
+            border-radius: 50%; display: flex; justify-content: center;
+            align-items: center; cursor: pointer; pointer-events: auto;
+            border: 1px solid var(--neon-blue); font-size: 18px;
+        }
+
+        /* Gameplay */
+        .line { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255, 255, 255, 0.05); }
+        .tile {
+            position: absolute; width: 90px;
+            background: linear-gradient(180deg, var(--neon-purple), var(--neon-blue));
+            border-radius: 6px; z-index: 5;
+        }
+        .phonk-tile { background: linear-gradient(180deg, #ff007f, #7a00ff) !important; }
+        .hit { background: white !important; box-shadow: 0 0 35px white !important; }
+
+        button {
+            padding: 16px 45px; background: linear-gradient(90deg, #6a11cb, #2575fc);
+            border: none; color: white; border-radius: 50px;
+            font-family: 'Orbitron'; cursor: pointer; font-weight: bold; font-size: 13px;
+        }
+
+        .footer-credits {
+            position: absolute; bottom: 15px; width: 100%; text-align: center;
+            font-size: 10px; cursor: pointer; color: rgba(255,255,255,0.4); font-family: 'Poppins';
+        }
+        .footer-credits b { color: var(--neon-blue); }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="ui-layer" class="hidden">
+            <div id="score">0</div>
+            <div id="pause-btn" onclick="pauseGame()">⏸</div>
+        </div>
+
+        <div class="line" style="left: 90px;"></div>
+        <div class="line" style="left: 180px;"></div>
+        <div class="line" style="left: 270px;"></div>
+
+        <div id="menu-screen" class="screen">
+            <h1 style="color: var(--neon-blue); text-shadow: 0 0 15px var(--neon-blue); font-size: 24px;">NEON PIANO</h1>
+            <p style="font-size: 9px; margin-top: -15px; opacity: 0.6;">BEKA STUDIO EDITION</p>
+            <button onclick="showSongs()" style="margin-top: 30px;">MÜZİKLER</button>
+            <div class="footer-credits" onclick="showAuthor()">
+                <div id="author-text"><b>BEKA STUDIO 2026</b></div>
+                <div style="font-size: 8px; opacity: 0.5; margin-top: 5px;">Powered by Gemini</div>
+            </div>
+        </div>
+
+        <div id="song-screen" class="screen hidden">
+            <h2 style="font-size: 16px; letter-spacing: 2px;">MÜZİK SEÇ</h2>
+            <div class="song-list" id="song-list-container"></div>
+            <button onclick="hideSongs()" style="background: #111; font-size: 11px; padding: 12px 30px;">GERİ</button>
+        </div>
+
+        <div id="pause-screen" class="screen hidden">
+            <h2 style="color: var(--neon-blue);">DURDURULDU</h2>
+            <button onclick="resumeGame()" style="margin-bottom: 15px;">DEVAM ET</button>
+            <button onclick="location.reload()" style="background: #333;">MENÜYE DÖN</button>
+        </div>
+    </div>
+
+    <script>
+        const songs = [
+            { id: 'phonk', name: '⚡ PHONK DRIFT ⚡', notes: [80, 85, 80, 90, 80, 85, 100, 80], baseSpeed: 6.5, type: 'sawtooth' },
+            { id: 'mehter', name: 'Ceddin Deden (Mehter)', notes: [293, 293, 329, 349, 392, 440, 392, 349, 329, 349, 329, 293], baseSpeed: 4.8, type: 'sine' },
+            { id: 'kursun', name: 'Kurşun Adres Sormaz', notes: [261, 293, 329, 261, 329, 349, 392], baseSpeed: 4.5, type: 'sine' },
+            { id: 'elise', name: 'Für Elise', notes: [659, 622, 659, 622, 659, 493, 587], baseSpeed: 5.5, type: 'sine' },
+            { id: 'bella', name: 'Bella Ciao', notes: [440, 523, 587, 659, 440, 523, 587, 659], baseSpeed: 5.0, type: 'sine' },
+            { id: 'hababam', name: 'Hababam Sınıfı', notes: [330, 392, 440, 493, 440, 392, 330], baseSpeed: 4.2, type: 'sine' }
+        ];
+
+        let gameActive = false, isPaused = false, score = 0, currentSpeed = 4;
+        let activeSong = null, noteIdx = 0, audioCtx = null, spawnTimer = null;
+
+        function showAuthor() {
+            const authorText = document.getElementById('author-text');
+            authorText.innerHTML = "Yapımcı: <b>Beloş ve Kaya KAYA</b>";
+            setTimeout(() => authorText.innerHTML = "<b>BEKA STUDIO 2026</b>", 4000);
+        }
+
+        function showSongs() {
+            const container = document.getElementById('song-list-container');
+            container.innerHTML = '';
+            songs.forEach(s => {
+                const hs = localStorage.getItem('hs_' + s.id) || 0;
+                const isPhonk = s.id === 'phonk';
+                const item = document.createElement('div');
+                item.className = `song-item ${isPhonk ? 'phonk' : ''}`;
+                item.innerHTML = `<div><h3>${s.name}</h3><small>Rekor: ${hs}</small></div><span>▶</span>`;
+                item.onclick = () => startGame(s);
+                container.appendChild(item);
+            });
+            document.getElementById('menu-screen').classList.add('hidden');
+            document.getElementById('song-screen').classList.remove('hidden');
+        }
+
+        function hideSongs() {
+            document.getElementById('song-screen').classList.add('hidden');
+            document.getElementById('menu-screen').classList.remove('hidden');
+        }
+
+        function startGame(song) {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            activeSong = song;
+            score = 0; noteIdx = 0;
+            currentSpeed = song.baseSpeed;
+            gameActive = true; isPaused = false;
+            
+            document.getElementById('song-screen').classList.add('hidden');
+            document.getElementById('ui-layer').classList.remove('hidden');
+            document.getElementById('score').innerText = "0";
+            gameLoop();
+        }
+
+        function pauseGame() { isPaused = true; document.getElementById('pause-screen').classList.remove('hidden'); }
+        function resumeGame() { isPaused = false; document.getElementById('pause-screen').classList.add('hidden'); gameLoop(); }
+
+        function playNote(freq) {
+            if (isPaused) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = activeSong.type; // Phonk için sawtooth, diğerleri için sine
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(activeSong.id === 'phonk' ? 0.2 : 0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.6);
+        }
+
+        function spawnTile() {
+            if (!gameActive || isPaused) return;
+            const tile = document.createElement('div');
+            const col = Math.floor(Math.random() * 4);
+            tile.className = 'tile' + (activeSong.id === 'phonk' ? ' phonk-tile' : '');
+            tile.style.height = '160px';
+            tile.style.left = (col * 90) + 'px';
+            tile.style.top = '-160px';
+            document.getElementById('game-container').appendChild(tile);
+
+            let hit = false;
+            const move = () => {
+                if (!gameActive) { tile.remove(); return; }
+                if (!isPaused) {
+                    let top = parseFloat(tile.style.top);
+                    tile.style.top = (top + currentSpeed) + 'px';
+                    if (top > 640) { if (!hit) endGame(); tile.remove(); return; }
+                }
+                requestAnimationFrame(move);
+            };
+            requestAnimationFrame(move);
+
+            tile.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                if (hit || isPaused) return;
+                hit = true;
+                tile.classList.add('hit');
+                playNote(activeSong.notes[noteIdx % activeSong.notes.length]);
+                score++; noteIdx++;
+                document.getElementById('score').innerText = score;
+                currentSpeed += 0.03; // Dinamik hızlanma
+                setTimeout(() => tile.remove(), 100);
+            });
+        }
+
+        function gameLoop() {
+            if (!gameActive || isPaused) return;
+            spawnTile();
+            let delay = Math.max(180, 800 - (currentSpeed * 40));
+            spawnTimer = setTimeout(gameLoop, delay);
+        }
+
+        function endGame() {
+            gameActive = false;
+            const hs = localStorage.getItem('hs_' + activeSong.id) || 0;
+            if (score > hs) localStorage.setItem('hs_' + activeSong.id, score);
+            alert("OYUN BİTTİ!\nSkorun: " + score);
+            location.reload();
+        }
+
+        document.getElementById('game-container').addEventListener('pointerdown', (e) => {
+            if (gameActive && !isPaused && e.target.id === 'game-container') endGame();
+        });
+    </script>
+</body>
+</html>
